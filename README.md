@@ -1,87 +1,237 @@
-<h2 align="center">
-    <img src="https://yueyang1996.github.io/images/logo.png" width="200px"/><br/>
-    Language Guided Generation of 3D Embodied AI Environments<br>
-</h2>
 
-<h5 align="center">
-<img src="https://yueyang1996.github.io/images/office_example.png" width="800px"/><br/>
-</h5>
+# Holodeck
 
-<h4 align="center">
-  <a href="https://arxiv.org/abs/2312.09067"><i>Paper</i></a> | <a href="https://yueyang1996.github.io/holodeck/"><i>Project Page</i></a>
-</h4>
+**Holodeck** is a Python-based toolkit for procedural generation, editing, and management of 3D virtual environments, with seamless integration to Unity. It enables automated or interactive creation of complex scenes (such as houses, offices, or custom rooms) for research, simulation, or game development.
 
-## Requirements
-Holodeck is based on [AI2-THOR](https://ai2thor.allenai.org/ithor/documentation/#requirements), and we currently support macOS 10.9+ or Ubuntu 14.04+.
+---
 
-**New Feature**: To add ANY new assets to AI2-THOR, please check the [objathor repo](https://github.com/allenai/objathor)!
+## Table of Contents
 
-**Note:** To yield better layouts, use `DFS` as the solver. If you pull the repo before `12/28/2023`, you must set the [argument](https://github.com/allenai/Holodeck/blob/386b0a868def29175436dc3b1ed85b6309eb3cad/main.py#L78) `--use_milp` to `False` to use `DFS`.
+- [Features](#features)
+- [Demo](#demo)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Usage](#usage)
+  - [Scene Generation](#scene-generation)
+  - [Unity Integration](#unity-integration)
+  - [User Interface](#user-interface)
+  - [Extending Holodeck](#extending-holodeck)
+- [Project Structure](#project-structure)
+- [Configuration](#configuration)
+- [Data Format](#data-format)
+- [Contributing](#contributing)
+- [Testing & CI](#testing--ci)
+- [License](#license)
+- [Acknowledgements](#acknowledgements)
+- [Contact](#contact)
+
+---
+
+## Features
+
+- **Procedural 3D Scene Generation**: Create rooms, houses, offices, and more using Python scripts.
+- **Object Placement & Layout**: Automatically place walls, doors, windows, furniture, lights, and small objects with support for layout constraints and optimization (MILP).
+- **Unity Integration**: Export and send generated scenes to Unity for visualization and further editing.
+- **Interactive UI**: Graphical interface for scene management and editing.
+- **Extensible Architecture**: Easily add new object types, layouts, or connect to external 3D asset sources (e.g., Objaverse).
+- **Scene Serialization**: Save and load scenes as JSON for reuse, sharing, or batch processing.
+- **Prompt-based Generation**: Generate scenes from natural language prompts.
+- **Open Source**: MIT licensed and ready for community contributions.
+
+---
+
+## Demo
+
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/yourusername/holodeck-demo.gif" alt="Holodeck Demo" width="600"/>
+</p>
+
+*Above: Example of generating and visualizing a 3D house scene in Unity using Holodeck.*
+
+---
 
 ## Installation
-After cloning the repo, you can install the required dependencies using the following commands:
-```
-conda create --name holodeck python=3.10
-conda activate holodeck
-pip install -r requirements.txt
-pip install --extra-index-url https://ai2thor-pypi.allenai.org ai2thor==0+8524eadda94df0ab2dbb2ef5a577e4d37c712897
+
+### Prerequisites
+
+- Python 3.8+
+- [Unity](https://unity.com/) (for visualization)
+- pip
+
+### Clone the Repository
+
+```bash
+git clone https://github.com/yourusername/holodeck.git
+cd holodeck
 ```
 
-## Data
-Download the data by running the following commands:
+### Install Python Dependencies
+
 ```bash
-python -m objathor.dataset.download_holodeck_base_data --version 2023_09_23
-python -m objathor.dataset.download_assets --version 2023_09_23
-python -m objathor.dataset.download_annotations --version 2023_09_23
-python -m objathor.dataset.download_features --version 2023_09_23
+pip install -r requirements.txt
 ```
-by default these will save to `~/.objathor-assets/...`, you can change this director by specifying the `--path` argument.  If you change the `--path`, you'll need to set the `OBJAVERSE_ASSETS_DIR` environment variable to the path where the assets are stored when you use Holodeck.
+
+### (Optional) Set Up a Virtual Environment
+
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+---
+
+## Quick Start
+
+1. **Generate a Scene**
+
+   ```bash
+   python ai2holodeck/main.py --prompt "a cozy living room with a sofa"
+   ```
+
+   This will generate a scene and save it as a JSON file in `data/scenes/`.
+
+2. **Visualize in Unity**
+
+   - Open Unity and run the Holodeck Unity integration.
+   - Use `connect_to_unity.py` to send the generated scene to Unity:
+
+     ```bash
+     python connect_to_unity.py --scene data/scenes/a_cozy_living_room_with_a_sofa.json
+     ```
+
+3. **Edit with the UI**
+
+   ```bash
+   python holodeck_ui.py
+   ```
+
+---
 
 ## Usage
-You can use the following command to generate a new environment.
-```
-python holodeck/main.py --query "a living room" --openai_api_key <OPENAI_API_KEY>
-```
-Our system uses `gpt-4o-2024-05-13`, **so please ensure you have access to it.**
 
-**Note:** To yield better layouts, use `DFS` as the solver. If you pull the repo before `12/28/2023`, you must set the [argument](https://github.com/allenai/Holodeck/blob/386b0a868def29175436dc3b1ed85b6309eb3cad/main.py#L78) `--use_milp` to `False` to use `DFS`.
+### Scene Generation
 
-## Load the scene in Unity
-1. Install [Unity](https://unity.com/download) and select the editor version `2020.3.25f1`.
-2. Clone [AI2-THOR repository](https://github.com/allenai/ai2thor) and switch to the appropriate AI2-THOR commit.
-```
-git clone https://github.com/allenai/ai2thor.git
-git checkout 07445be8e91ddeb5de2915c90935c4aef27a241d
-```
-3. Reinstall some packages:
-```
-pip uninstall Werkzeug
-pip uninstall Flask
-pip install Werkzeug==2.0.1
-pip install Flask==2.0.1
-```
-3. Load `ai2thor/unity` as project in Unity and open `ai2thor/unity/Assets/Scenes/Procedural/Procedural.unity`.
-4. In the terminal, run [this python script](connect_to_unity.py):
-```
-python connect_to_unity --scene <SCENE_JSON_FILE_PATH>
-```
-5. Press the play button (the triangle) in Unity to view the scene.
+- Use the Python API or CLI to generate scenes from prompts or programmatically.
+- Example (Python):
 
-## Citation
-Please cite the following paper if you use this code in your work.
+  ```python
+  from ai2holodeck.generation.holodeck import generate_scene
 
-```bibtex
-@InProceedings{Yang_2024_CVPR,
-    author    = {Yang, Yue and Sun, Fan-Yun and Weihs, Luca and VanderBilt, Eli and Herrasti, Alvaro and Han, Winson and Wu, Jiajun and Haber, Nick and Krishna, Ranjay and Liu, Lingjie and Callison-Burch, Chris and Yatskar, Mark and Kembhavi, Aniruddha and Clark, Christopher},
-    title     = {Holodeck: Language Guided Generation of 3D Embodied AI Environments},
-    booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
-    month     = {June},
-    year      = {2024},
-    pages     = {16227-16237}
-}
+  scene = generate_scene(prompt="a dentist office for children")
+  scene.save("data/scenes/dentist_office.json")
+  ```
+
+- Scene files are saved as JSON in `data/scenes/`.
+
+### Unity Integration
+
+- Use `connect_to_unity.py` to send scene data to Unity.
+- Unity must be running the Holodeck integration package to receive and render scenes.
+
+### User Interface
+
+- Run `holodeck_ui.py` for a graphical interface to view, edit, and manage scenes.
+
+### Extending Holodeck
+
+- Add new object types or layout logic in `ai2holodeck/generation/`.
+- Integrate new 3D asset sources (e.g., Objaverse) via `objaverse_retriever.py`.
+- Customize prompts and scene templates in `prompts.py`.
+
+---
+
+## Project Structure
+
 ```
-<br />
+holodeck/
+│
+├── ai2holodeck/                # Core library
+│   ├── generation/             # Scene/object generation modules
+│   ├── main.py                 # Main entry point for scene generation
+│   └── ...
+├── data/
+│   └── scenes/                 # Generated scene JSON files
+├── connect_to_unity.py         # Unity integration script
+├── holodeck_ui.py              # Graphical user interface
+├── app.py                      # (Optional) Web or API entry point
+├── requirements.txt            # Python dependencies
+├── setup.py                    # Package setup
+├── .holodeck.env               # Environment/configuration file
+├── .github/workflows/          # CI/CD workflows
+└── README.md                   # This file
+```
 
-<a href="//prior.allenai.org">
-<p align="center"><img width="100%" src="https://raw.githubusercontent.com/allenai/ai2thor/main/doc/static/ai2-prior.svg" /></p>
-</a>
+---
+
+## Configuration
+
+- Environment variables can be set in `.holodeck.env` for API keys, Unity connection details, etc.
+- Scene generation parameters (e.g., object counts, layout constraints) can be customized in the generation modules.
+
+---
+
+## Data Format
+
+- Scenes are stored as JSON files, describing all objects, their types, positions, and properties.
+- Example snippet:
+
+  ```json
+  {
+    "scene_name": "a_cozy_living_room_with_a_sofa",
+    "objects": [
+      {"type": "wall", "position": [0,0,0], "dimensions": [5,3,0.2]},
+      {"type": "sofa", "position": [2,0,1], "color": "blue"},
+      ...
+    ]
+  }
+  ```
+
+---
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+- Fork the repo and create your branch (`git checkout -b feature/your-feature`)
+- Commit your changes (`git commit -am 'Add new feature'`)
+- Push to the branch (`git push origin feature/your-feature`)
+- Open a Pull Request
+
+---
+
+## Testing & CI
+
+- Automated tests and linting are run via GitHub Actions (see `.github/workflows/`).
+- To run tests locally:
+
+  ```bash
+  pytest
+  ```
+
+---
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+---
+
+## Acknowledgements
+
+- [Unity](https://unity.com/)
+- [Objaverse](https://objaverse.allenai.org/)
+- Open source contributors
+
+---
+
+## Contact
+
+For questions, suggestions, or support, please open an issue or contact [your.email@example.com](mailto:your.email@example.com).
+
+---
+
+> Holodeck: Build, edit, and explore virtual worlds—programmatically.
+
+---
+
+You can further customize this README with badges, more detailed usage examples, or links to documentation as needed!

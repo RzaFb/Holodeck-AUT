@@ -1,8 +1,19 @@
 import ast
 import os
+try:
+    import openai  # could be legacy or the new SDK
+except Exception:
+    openai = None
 import traceback
 from argparse import ArgumentParser
 
+try:
+    import torch
+    torch.multiprocessing.set_sharing_strategy("file_system")
+except Exception:
+    pass
+
+    
 import compress_json
 from tqdm import tqdm
 
@@ -178,6 +189,18 @@ if __name__ == "__main__":
         help="Whether to generate a single room scene.",
         default="False",
     )
+    parser.add_argument(
+        "--openai_base_url",
+        help="Base URL for OpenAI-compatible endpoint (e.g., GitHub Models). "
+            "Defaults to env OPENAI_BASE_URL or https://models.github.ai/inference.",
+        default=os.getenv("OPENAI_BASE_URL", "https://models.github.ai/inference"),
+    )
+    parser.add_argument(
+        "--model",
+        help='Model ID to use (e.g., "openai/gpt-4.1"). Defaults to env HOLODECK_MODEL or "openai/gpt-4.1".',
+        default=os.getenv("HOLODECK_MODEL", "openai/gpt-4.1"),
+    )
+
 
     args = parser.parse_args()
 
@@ -187,14 +210,23 @@ if __name__ == "__main__":
     if args.openai_org is None:
         args.openai_org = os.environ.get("OPENAI_ORG")
 
+    if args.openai_api_key:
+        os.environ["OPENAI_API_KEY"] = args.openai_api_key
+    os.environ["OPENAI_BASE_URL"] = args.openai_base_url
+    os.environ["HOLODECK_MODEL"] = args.model
+
+    # preserve the model string before we replace args.model with the object
+    _model_id = args.model
     args.model = Holodeck(
         openai_api_key=args.openai_api_key,
         openai_org=args.openai_org,
         objaverse_asset_dir=OBJATHOR_ASSETS_DIR,
         single_room=ast.literal_eval(args.single_room),
+        openai_base_url=args.openai_base_url,
+        model_id=_model_id,
     )
 
-    if args.used_assets != [] and args.used_assets.endswith(".txt"):
+    if isinstance(args.used_assets, str) and args.used_assets.endswith(".txt"):
         with open(args.used_assets, "r") as f:
             args.used_assets = f.readlines()
             args.used_assets = [asset.strip() for asset in args.used_assets]

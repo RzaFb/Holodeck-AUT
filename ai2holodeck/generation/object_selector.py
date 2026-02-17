@@ -2,6 +2,7 @@ import ast
 import copy
 import json
 import multiprocessing
+import os
 import random
 import re
 import traceback
@@ -60,7 +61,8 @@ class ObjectSelector:
 
         self.random_selection = False
         self.reuse_selection = False
-        self.multiprocessing = True
+        self.multiprocessing = False
+        self.fast_mode = os.getenv("HOLODECK_FAST", "1").lower() in ("1","true","yes")
 
     def select_objects(self, scene, additional_requirements="N/A"):
         rooms_types = [room["roomType"] for room in scene["rooms"]]
@@ -366,6 +368,15 @@ class ObjectSelector:
         wall_object_list = []
         for object_name, object_info in parsed_plan.items():
             object_info["object_name"] = object_name
+            if self.fast_mode:
+                # Drop small items like mugs/books/pillows on top of other objects
+                object_info["objects_on_top"] = []
+                # Cap quantity to 1 and reuse the same asset id (less unique imports)
+                try:
+                    object_info["quantity"] = 1
+                except Exception:
+                    object_info["quantity"] = 1
+                object_info["variance_type"] = "same"
             if object_info["location"] == "floor":
                 floor_object_list.append(object_info)
             else:
@@ -410,13 +421,13 @@ class ObjectSelector:
             object_type = floor_object["object_name"]
             object_description = floor_object["description"]
             object_size = floor_object["size"]
-            quantity = min(floor_object["quantity"], 10)
+            quantity = 1 if self.fast_mode else min(floor_object["quantity"], 10)
 
             if "variance_type" not in floor_object:
                 print(
                     f'[WARNING] variance_type not found in the the object:\n{floor_object}, will set this to be "same".'
                 )
-            variance_type = floor_object.get("variance_type", "same")
+            variance_type = "same" if self.fast_mode else floor_object.get("variance_type", "same")
 
             candidates = self.object_retriever.retrieve(
                 [f"a 3D model of {object_type}, {object_description}"],
@@ -476,7 +487,7 @@ class ObjectSelector:
                     object_size, candidates
                 )
 
-            candidates = candidates[:10]  # only select top 10 candidates
+            candidates = candidates[:3] if self.fast_mode else candidates[:10]
 
             selected_asset_ids = []
             if variance_type == "same":

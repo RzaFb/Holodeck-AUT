@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any, Tuple
 
 import compress_json
 import open_clip
-from langchain.llms import OpenAI
+from ai2holodeck.generation.github_llm import GithubModelsLLM
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
@@ -60,17 +60,21 @@ class Holodeck:
         openai_org: Optional[str],
         objaverse_asset_dir: str,
         single_room,
+        openai_base_url: Optional[str] = None,
+        model_id: Optional[str] = None,
     ):
         confirm_paths_exist()
 
         if openai_org is not None:
             os.environ["OPENAI_ORG"] = openai_org
 
-        # initialize llm
-        self.llm = OpenAI(
-            model_name=LLM_MODEL_NAME,
+        # initialize LLM (GitHub Models via OpenAI-compatible Chat Completions)
+        self.llm = GithubModelsLLM(
+            api_key=openai_api_key,
+            base_url=openai_base_url,
+            model=model_id or LLM_MODEL_NAME,
             max_tokens=2048,
-            openai_api_key=openai_api_key,
+            temperature=0.2,
         )
 
         # initialize CLIP
